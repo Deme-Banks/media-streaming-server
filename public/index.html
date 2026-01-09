@@ -13,9 +13,31 @@
             <div class="header-content">
                 <a href="/" class="logo">DEME MOVIES</a>
                 <div style="display: flex; gap: 15px; align-items: center; flex: 1; max-width: 600px;">
-                    <div class="search-box" style="flex: 1;">
-                        <input type="text" id="searchInput" placeholder="Search..." class="search-input">
-                        <button class="search-btn" onclick="performSearch()">🔍</button>
+                    <div class="search-box" style="flex: 1; position: relative;">
+                        <div style="display: flex; gap: 10px; align-items: center; width: 100%;">
+                            <input type="text" id="searchInput" placeholder="Search movies, TV shows, anime..." class="search-input" autocomplete="off" oninput="handleSearchInput()" onfocus="showSearchSuggestions()" onblur="hideSearchSuggestionsDelayed()">
+                            <button id="clearSearchBtn" class="clear-search-btn" onclick="clearSearch()" style="display: none; padding: 8px 12px; background: #444; color: #fff; border: none; border-radius: 4px; cursor: pointer;">✕</button>
+                            <button class="search-btn" onclick="performSearch()">🔍</button>
+                        </div>
+                        <!-- Search Filters -->
+                        <div id="searchFilters" style="display: none; margin-top: 8px; gap: 10px; flex-wrap: wrap;" class="search-filters">
+                            <label style="color: #ccc; font-size: 12px; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="filterMovies" checked onchange="updateSearchFilters()" style="margin: 0;">
+                                <span>Movies</span>
+                            </label>
+                            <label style="color: #ccc; font-size: 12px; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="filterTV" checked onchange="updateSearchFilters()" style="margin: 0;">
+                                <span>TV Shows</span>
+                            </label>
+                            <label style="color: #ccc; font-size: 12px; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="filterAnime" checked onchange="updateSearchFilters()" style="margin: 0;">
+                                <span>Anime</span>
+                            </label>
+                        </div>
+                        <!-- Search Suggestions Dropdown -->
+                        <div id="searchSuggestions" class="search-suggestions" style="display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 5px; background: #1a1a1a; border: 1px solid #444; border-radius: 8px; max-height: 400px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+                            <div id="searchSuggestionsList" style="padding: 10px;"></div>
+                        </div>
                     </div>
                     <!-- User Menu -->
                     <div class="user-menu" id="userMenu" style="display: none;">
@@ -25,6 +47,7 @@
                         </div>
                         <div class="user-dropdown" id="userDropdown" style="display: none;">
                             <a href="#" onclick="showFavorites(); return false;">❤️ My Favorites</a>
+                            <a href="#" onclick="showSettings(); return false;">⚙️ Settings</a>
                             <a href="#" onclick="logout(); return false;">🚪 Logout</a>
                         </div>
                     </div>
@@ -44,15 +67,32 @@
                 <a href="#" class="nav-link" id="moviesNavLink" onclick="filterByType('movie'); return false;">Movies</a>
                 <a href="#" class="nav-link" id="showsNavLink" onclick="filterByType('tv'); return false;">Shows</a>
                 <a href="#" class="nav-link" id="favoritesNavLink" onclick="showFavorites(); return false;" style="display: none;">❤️ Favorites</a>
+                <a href="#" class="nav-link" id="collectionsNavLink" onclick="showCollections(); return false;" style="display: none;">📁 Collections</a>
+                <a href="#" class="nav-link" onclick="showSettings(); return false;">⚙️ API Settings</a>
                 <hr class="nav-separator">
             </div>
         </nav>
+
+        <!-- Continue Watching Section -->
+        <section class="featured-section" id="continueWatchingSection" style="display: none;">
+            <h2 class="section-title">Continue Watching</h2>
+            <div class="featured-grid" id="continueWatchingGrid"></div>
+        </section>
+
+        <!-- Recommendations Section -->
+        <section class="featured-section" id="recommendationsSection" style="display: none;">
+            <h2 class="section-title">Recommended For You</h2>
+            <div class="featured-grid" id="recommendationsGrid"></div>
+        </section>
 
         <!-- Featured Section -->
         <section class="featured-section" id="featuredSection">
             <h2 class="section-title">Featured</h2>
             <div class="featured-grid" id="featuredGrid"></div>
         </section>
+
+        <!-- Search Results Count -->
+        <div id="resultsCount" style="display: none; padding: 15px 20px; margin: 20px 20px 0; background: rgba(255, 102, 0, 0.1); border-left: 4px solid #ff6600; color: #ff6600; font-weight: 500; border-radius: 4px; font-size: 15px;"></div>
 
         <!-- Filter Tabs -->
         <section class="filter-section">
@@ -95,13 +135,46 @@
                 Your browser does not support the video tag.
             </video>
             <iframe id="cinetaroPlayer" style="display: none; width: 100%; aspect-ratio: 16/9; border: none; border-radius: 4px;" allowfullscreen></iframe>
-            <div id="subtitleSelector" style="display: none; margin: 15px 0;">
+            <!-- Episode Selector for TV Shows -->
+            <div id="episodeSelector" style="display: none; margin: 15px 0; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 8px;">
+                <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                    <div>
+                        <label for="seasonSelect" style="color: #fff; margin-right: 10px;">Season:</label>
+                        <select id="seasonSelect" class="subtitle-select" onchange="changeSeason(this.value)" style="padding: 8px; border-radius: 4px; background: #2a2a2a; color: #fff; border: 1px solid #444;">
+                            <option value="1">Season 1</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="episodeSelect" style="color: #fff; margin-right: 10px;">Episode:</label>
+                        <select id="episodeSelect" class="subtitle-select" onchange="changeEpisode(this.value)" style="padding: 8px; border-radius: 4px; background: #2a2a2a; color: #fff; border: 1px solid #444;">
+                            <option value="1">Episode 1</option>
+                        </select>
+                    </div>
+                    <button id="nextEpisodeBtn" onclick="playNextEpisode()" style="padding: 8px 20px; background: #ff6600; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">▶️ Next Episode</button>
+                </div>
+            </div>
+            <div id="subtitleSelector" style="display: none; margin-top: 15px; text-align: center;">
                 <label for="subtitleLang" style="color: #fff; margin-right: 10px;">Subtitles:</label>
                 <select id="subtitleLang" class="subtitle-select" onchange="changeSubtitle(this.value)">
                     <option value="">None</option>
                 </select>
             </div>
             <div class="video-info" id="videoInfo"></div>
+            <div class="player-controls" id="playerControls" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.5); border-radius: 8px;">
+                <button class="btn-report" id="reportBtn" onclick="reportNonStreamable()" style="display: none; padding: 10px 20px; background: #ff4444; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px;">⚠️ This doesn't work</button>
+                <button class="btn-resume" id="resumeBtn" onclick="resumePlayback()" style="display: none; padding: 10px 20px; background: #00aa00; color: white; border: none; border-radius: 4px; cursor: pointer;">▶️ Resume</button>
+                <div class="playback-speed" style="display: inline-block; margin-left: 15px;">
+                    <label for="playbackSpeed" style="color: #fff; margin-right: 10px;">Speed:</label>
+                    <select id="playbackSpeed" onchange="changePlaybackSpeed(this.value)" style="padding: 5px; border-radius: 4px;">
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -136,6 +209,96 @@
             </form>
             <p style="margin-top: 15px; text-align: center;">
                 Already have an account? <a href="#" onclick="closeRegisterModal(); showLoginModal(); return false;" style="color: #ff6600;">Login</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <span class="close-modal" onclick="closeSettings()">&times;</span>
+            <h2 style="margin-bottom: 20px; color: #ff6600;">⚙️ API Settings</h2>
+            <p style="margin-bottom: 20px; color: #ccc;">Toggle which APIs to use for loading content. Disabled APIs won't fetch content, making loading faster.</p>
+            
+            <div class="settings-section">
+                <h3 style="margin-bottom: 15px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">🎬 Movies</h3>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tmdb_popular" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TMDB Popular Movies</span>
+                    </label>
+                </div>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tmdb_trending" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TMDB Trending Movies</span>
+                    </label>
+                </div>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tmdb_toprated" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TMDB Top Rated Movies</span>
+                    </label>
+                </div>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tmdb_nowplaying" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TMDB Now Playing</span>
+                    </label>
+                </div>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tmdb_upcoming" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TMDB Upcoming Movies</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section" style="margin-top: 25px;">
+                <h3 style="margin-bottom: 15px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">📺 TV Shows</h3>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tmdb_tv_popular" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TMDB Popular TV Shows</span>
+                    </label>
+                </div>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tmdb_tv_toprated" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TMDB Top Rated TV Shows</span>
+                    </label>
+                </div>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_tvmaze" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">TVMaze (Free, no key)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section" style="margin-top: 25px;">
+                <h3 style="margin-bottom: 15px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">🎌 Anime</h3>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_jikan" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">Jikan API (Free)</span>
+                    </label>
+                </div>
+                <div class="api-toggle-item">
+                    <label class="api-toggle-label">
+                        <input type="checkbox" id="api_anilist" class="api-toggle-checkbox" onchange="saveAPISettings()">
+                        <span class="api-toggle-name">AniList GraphQL (Free)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #333;">
+                <button onclick="resetAPISettings()" class="btn" style="background: #444; margin-right: 10px;">Reset to Default</button>
+                <button onclick="closeSettings()" class="btn" style="background: #ff6600;">Done</button>
+            </div>
+            
+            <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                💡 <strong>Tip:</strong> Changes take effect after reloading content. Disable APIs you don't need to speed up loading.
             </p>
         </div>
     </div>
