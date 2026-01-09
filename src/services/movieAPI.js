@@ -28,8 +28,33 @@ class MovieAPI {
     this.omdbBaseUrl = 'http://www.omdbapi.com';
     this.omdbApiKey = process.env.OMDB_API_KEY || ''; // Optional - free tier: 1,000 requests/day
     this.cinetaroBaseUrl = 'https://apicinetaro.falex43350.workers.dev';
-    // Fallback streaming sources (can be added later)
-    this.fallbackSources = [];
+    // Fallback streaming sources - multiple APIs for redundancy
+    this.fallbackSources = [
+      {
+        name: 'cinetaro',
+        baseUrl: 'https://apicinetaro.falex43350.workers.dev',
+        priority: 1,
+        enabled: true
+      },
+      {
+        name: 'cinetaro-alt',
+        baseUrl: 'https://cinetaro-api.vercel.app',
+        priority: 2,
+        enabled: true
+      },
+      {
+        name: 'vidsrc',
+        baseUrl: 'https://vidsrc.me',
+        priority: 3,
+        enabled: true
+      },
+      {
+        name: 'embed',
+        baseUrl: 'https://embed.su',
+        priority: 4,
+        enabled: true
+      }
+    ];
     
     // Cache for API responses
     this.cacheDir = path.join(__dirname, '../../.cache/api');
@@ -235,7 +260,7 @@ class MovieAPI {
         genreIds: item.genre_ids || [],
         hasThumbnail: !!item.poster_path,
         // Cinetaro streaming URL (if enabled)
-        streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'movie') : null,
+        streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
         hasStreaming: this.useCinetaro,
         // Subtitle support (Cinetaro supports multiple languages)
         subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
@@ -291,7 +316,7 @@ class MovieAPI {
         genreIds: item.genre_ids || [],
         hasThumbnail: !!item.poster_path,
         // Cinetaro streaming URL (if enabled) - default to season 1, episode 1
-        streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'tv', { season: 1, episode: 1 }) : null,
+        streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'tv', { season: 1, episode: 1 }) : null,
         hasStreaming: this.useCinetaro,
         // Subtitle support
         subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
@@ -348,7 +373,7 @@ class MovieAPI {
           status: item.status,
           hasThumbnail: !!item.images?.jpg?.image_url,
           // Cinetaro streaming URL if Anilist ID is available and Cinetaro is enabled
-          streamingUrl: (this.useCinetaro && anilistId) ? this.getStreamingUrl(anilistId, 'anime', { season: 1, episode: 1 }) : (item.trailer?.url || null),
+          streamingUrl: (this.useCinetaro && anilistId) ? this.getStreamingUrlSync(anilistId, 'anime', { season: 1, episode: 1 }) : (item.trailer?.url || null),
           hasStreaming: this.useCinetaro && !!anilistId,
           // Subtitle support for anime (sub/dub options)
           subtitles: (this.useCinetaro && anilistId) ? ['sub', 'dub', 'hindi'] : []
@@ -408,7 +433,7 @@ class MovieAPI {
           genres: this.mapGenres(item.genre_ids || [], 'movie'),
           genreIds: item.genre_ids || [],
           hasThumbnail: !!item.poster_path,
-          streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'movie') : null,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
           hasStreaming: this.useCinetaro,
           subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
         }))
@@ -467,7 +492,7 @@ class MovieAPI {
           genres: this.mapGenres(item.genre_ids || [], 'movie'),
           genreIds: item.genre_ids || [],
           hasThumbnail: !!item.poster_path,
-          streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'movie') : null,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
           hasStreaming: this.useCinetaro,
           subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
         }))
@@ -526,7 +551,7 @@ class MovieAPI {
           genres: this.mapGenres(item.genre_ids || [], 'movie'),
           genreIds: item.genre_ids || [],
           hasThumbnail: !!item.poster_path,
-          streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'movie') : null,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
           hasStreaming: this.useCinetaro,
           subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
         }));
@@ -581,7 +606,7 @@ class MovieAPI {
           genres: this.mapGenres(item.genre_ids || [], 'movie'),
           genreIds: item.genre_ids || [],
           hasThumbnail: !!item.poster_path,
-          streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'movie') : null,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
           hasStreaming: this.useCinetaro,
           subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
         }));
@@ -637,7 +662,7 @@ class MovieAPI {
           genreIds: item.genre_ids || [],
           hasThumbnail: !!item.poster_path,
           // Cinetaro streaming URL (if enabled)
-          streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'movie') : null,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
           hasStreaming: this.useCinetaro,
           subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
         }))
@@ -698,7 +723,7 @@ class MovieAPI {
           genreIds: item.genre_ids || [],
           hasThumbnail: !!item.poster_path,
           episodes: null,
-          streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'tv', { season: 1, episode: 1 }) : null,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'tv', { season: 1, episode: 1 }) : null,
           hasStreaming: this.useCinetaro,
           subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
         }))
@@ -762,7 +787,7 @@ class MovieAPI {
           hasThumbnail: !!item.poster_path,
           episodes: null,
           // Cinetaro streaming URL (if enabled) - default to season 1, episode 1
-          streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'tv', { season: 1, episode: 1 }) : null,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'tv', { season: 1, episode: 1 }) : null,
           hasStreaming: this.useCinetaro,
           subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
         }))
@@ -833,7 +858,7 @@ class MovieAPI {
             status: item.status,
             hasThumbnail: !!item.images?.jpg?.image_url,
             // Cinetaro streaming URL if Anilist ID is available and Cinetaro is enabled
-            streamingUrl: (this.useCinetaro && anilistId) ? this.getStreamingUrl(anilistId, 'anime', { season: 1, episode: 1 }) : (item.trailer?.url || null),
+            streamingUrl: (this.useCinetaro && anilistId) ? this.getStreamingUrlSync(anilistId, 'anime', { season: 1, episode: 1 }) : (item.trailer?.url || null),
             hasStreaming: this.useCinetaro && !!anilistId,
             // Subtitle support for anime
             subtitles: (this.useCinetaro && anilistId) ? ['sub', 'dub', 'hindi'] : []
@@ -945,7 +970,7 @@ class MovieAPI {
             format: item.format,
             studio: item.studios?.nodes?.[0]?.name || null,
             hasThumbnail: !!item.coverImage,
-            streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'anime', { season: 1, episode: 1 }) : null,
+            streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'anime', { season: 1, episode: 1 }) : null,
             hasStreaming: this.useCinetaro,
             subtitles: this.useCinetaro ? ['sub', 'dub'] : []
           };
@@ -1000,7 +1025,7 @@ class MovieAPI {
         genreIds: item.genre_ids || [],
         hasThumbnail: !!item.poster_path,
         // Cinetaro streaming URL (if enabled)
-        streamingUrl: this.useCinetaro ? this.getStreamingUrl(item.id, 'movie') : null,
+        streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
         hasStreaming: this.useCinetaro,
         subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
       }));
@@ -1014,59 +1039,169 @@ class MovieAPI {
   }
 
   /**
-   * Get streaming/embed URL from Cinetaro (if enabled)
-   * Cinetaro provides embeddable iframe URLs
+   * Get streaming URL from a specific source
    * 
    * @param {string|number} id - TMDB ID for movies/TV, Anilist ID for anime
    * @param {string} type - 'movie', 'tv', or 'anime'
    * @param {object} options - Additional options (season, episode, language, etc.)
+   * @param {object} source - Source configuration object
    */
-  getStreamingUrl(id, type = 'movie', options = {}) {
-    if (!this.useCinetaro) return null;
+  getStreamingUrlFromSource(id, type = 'movie', options = {}, source) {
+    if (!source || !source.enabled) return null;
 
     const { season = 1, episode = 1, language = 'english', animeType = 'sub' } = options;
+    const baseUrl = source.baseUrl;
 
     try {
       let url = null;
 
-      if (type === 'movie') {
-        // Format: /movie/[TMDB_ID]/[LANG]
-        url = `${this.cinetaroBaseUrl}/movie/${id}/${language}`;
-      } else if (type === 'tv') {
-        // Format: /tv/[TMDB_ID]/[S]/[E]/[LANG]
-        url = `${this.cinetaroBaseUrl}/tv/${id}/${season}/${episode}/${language}`;
-      } else if (type === 'anime') {
-        // Format: /anime/anilist/[TYPE]/[ANILIST_ID]/[S]/[E]
-        // Types: sub, dub, hindi
-        url = `${this.cinetaroBaseUrl}/anime/anilist/${animeType}/${id}/${season}/${episode}`;
+      if (source.name === 'cinetaro' || source.name === 'cinetaro-alt') {
+        // Cinetaro format
+        if (type === 'movie') {
+          url = `${baseUrl}/movie/${id}/${language}`;
+        } else if (type === 'tv') {
+          url = `${baseUrl}/tv/${id}/${season}/${episode}/${language}`;
+        } else if (type === 'anime') {
+          url = `${baseUrl}/anime/anilist/${animeType}/${id}/${season}/${episode}`;
+        }
+      } else if (source.name === 'vidsrc') {
+        // Vidsrc format
+        if (type === 'movie') {
+          url = `${baseUrl}/embed/movie/${id}`;
+        } else if (type === 'tv') {
+          url = `${baseUrl}/embed/tv/${id}/${season}-${episode}`;
+        }
+      } else if (source.name === 'embed') {
+        // Generic embed format
+        if (type === 'movie') {
+          url = `${baseUrl}/embed/movie/${id}`;
+        } else if (type === 'tv') {
+          url = `${baseUrl}/embed/tv/${id}/${season}/${episode}`;
+        }
       }
 
       return url;
     } catch (error) {
-      console.warn('Error generating Cinetaro URL:', error.message);
+      console.warn(`Error generating URL from ${source.name}:`, error.message);
       return null;
     }
   }
 
   /**
-   * Check if Cinetaro has content available for a given ID
+   * Get streaming/embed URL with fallback support
+   * Tries multiple sources in priority order until one works
+   * 
+   * @param {string|number} id - TMDB ID for movies/TV, Anilist ID for anime
+   * @param {string} type - 'movie', 'tv', or 'anime'
+   * @param {object} options - Additional options (season, episode, language, etc.)
+   * @param {boolean} checkAvailability - If true, checks if URL is actually available
+   */
+  async getStreamingUrl(id, type = 'movie', options = {}, checkAvailability = false) {
+    if (!this.useCinetaro) return null;
+
+    // Sort sources by priority
+    const sortedSources = [...this.fallbackSources]
+      .filter(s => s.enabled)
+      .sort((a, b) => a.priority - b.priority);
+
+    // If not checking availability, return primary source URL immediately (fast)
+    if (!checkAvailability) {
+      const primarySource = sortedSources[0];
+      if (primarySource) {
+        return this.getStreamingUrlFromSource(id, type, options, primarySource);
+      }
+      return null;
+    }
+
+    // Try each source in order with availability checking
+    for (const source of sortedSources) {
+      const url = this.getStreamingUrlFromSource(id, type, options, source);
+      
+      if (!url) continue;
+
+      // Check if this URL is actually available
+      try {
+        const isAvailable = await this.checkStreamingUrlAvailability(url, source.name);
+        if (isAvailable) {
+          console.log(`[Streaming] Using ${source.name} for ${type} ${id}`);
+          return url;
+        }
+      } catch (error) {
+        // Try next source
+        continue;
+      }
+    }
+
+    // If checking availability and none worked, return primary source URL anyway
+    // (let the frontend handle the error)
+    const primarySource = sortedSources[0];
+    if (primarySource) {
+      return this.getStreamingUrlFromSource(id, type, options, primarySource);
+    }
+
+    return null;
+  }
+
+  /**
+   * Get streaming URL synchronously (for bulk operations where async is not needed)
+   * Returns URL from primary source without checking availability
+   */
+  getStreamingUrlSync(id, type = 'movie', options = {}) {
+    if (!this.useCinetaro) return null;
+
+    const sortedSources = [...this.fallbackSources]
+      .filter(s => s.enabled)
+      .sort((a, b) => a.priority - b.priority);
+
+    const primarySource = sortedSources[0];
+    if (primarySource) {
+      return this.getStreamingUrlFromSource(id, type, options, primarySource);
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if a streaming URL is actually available
+   * 
+   * @param {string} url - The streaming URL to check
+   * @param {string} sourceName - Name of the source (for logging)
+   */
+  async checkStreamingUrlAvailability(url, sourceName = 'unknown') {
+    if (!url) return false;
+
+    try {
+      const response = await axios.head(url, {
+        timeout: 3000, // Fast timeout for fallback checking
+        validateStatus: (status) => status < 500, // Accept any status below 500
+        maxRedirects: 2
+      });
+      
+      // Some sources return 200 even if content doesn't exist
+      // For now, accept 200-299 as available
+      const isAvailable = response.status >= 200 && response.status < 300;
+      
+      if (!isAvailable) {
+        console.log(`[Streaming] ${sourceName} returned status ${response.status} for ${url}`);
+      }
+      
+      return isAvailable;
+    } catch (error) {
+      // Timeout or network error - assume not available
+      return false;
+    }
+  }
+
+  /**
+   * Check if any streaming source has content available for a given ID
+   * Tries all fallback sources
    */
   async checkCinetaroAvailability(id, type = 'movie', options = {}) {
     if (!this.useCinetaro) return false;
 
-    const url = this.getStreamingUrl(id, type, options);
-    if (!url) return false;
-
-    try {
-      // Try to fetch the URL to see if it's available
-      const response = await axios.head(url, {
-        timeout: 5000,
-        validateStatus: (status) => status < 500 // Accept any status below 500
-      });
-      return response.status === 200;
-    } catch (error) {
-      return false;
-    }
+    // Try to get streaming URL with availability checking
+    const url = await this.getStreamingUrl(id, type, options, true);
+    return url !== null;
   }
 
   /**
@@ -1147,11 +1282,230 @@ class MovieAPI {
   }
 
   /**
-   * Get cartoons/animation movies
+   * Get cartoons/animation content from multiple sources
+   * Fetches from: TMDB Animation movies, TMDB Animation TV shows, AniList, and searches
    */
   async getCartoons(page = 1) {
-    // TMDB genre ID for Animation is 16
-    return this.getMoviesByGenre(16, page);
+    if (!this.tmdbApiKey) {
+      console.warn('TMDB API key not set. Set TMDB_API_KEY environment variable for cartoon content.');
+      // Fallback to anime-only if TMDB not available
+      return this.getPopularAnimeFromJikan(page).catch(() => []);
+    }
+
+    const cacheKey = `cartoons_all_${page}`;
+    const cached = await this.getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+      // Fetch from multiple sources in parallel
+      const [
+        animationMovies,
+        animationTVShows,
+        popularAnime,
+        topRatedAnimationMovies,
+        topRatedAnimationTV
+      ] = await Promise.all([
+        // TMDB Animation movies (genre ID 16)
+        this.getMoviesByGenre(16, page).catch(() => []),
+        // TMDB Animation TV shows (genre ID 16)
+        this.getTVShowsByGenre(16, page).catch(() => []),
+        // AniList anime (many cartoons are classified as anime)
+        this.getPopularAnimeFromAniList(page).catch(() => []),
+        // TMDB Top Rated Animation Movies
+        this.getTopRatedAnimationMovies(page).catch(() => []),
+        // TMDB Top Rated Animation TV Shows
+        this.getTopRatedAnimationTV(page).catch(() => [])
+      ]);
+
+      // Combine all results
+      let allCartoons = [
+        ...animationMovies,
+        ...animationTVShows,
+        ...popularAnime,
+        ...topRatedAnimationMovies,
+        ...topRatedAnimationTV
+      ];
+
+      // Filter out duplicates and ensure valid items
+      allCartoons = allCartoons.filter(item => 
+        item && 
+        item.title && 
+        (item.posterUrl || item.backdropUrl)
+      );
+
+      // Deduplicate by title and year
+      const deduplicated = this.deduplicateMedia(allCartoons);
+
+      await this.setCache(cacheKey, deduplicated);
+      return deduplicated;
+    } catch (error) {
+      console.error('Error getting cartoons:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get top rated animation movies from TMDB
+   */
+  async getTopRatedAnimationMovies(page = 1) {
+    if (!this.tmdbApiKey) return [];
+
+    const cacheKey = `tmdb_top_rated_animation_movies_${page}`;
+    const cached = await this.getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await axios.get(`${this.tmdbBaseUrl}/discover/movie`, {
+        params: {
+          api_key: this.tmdbApiKey,
+          with_genres: 16, // Animation genre
+          sort_by: 'vote_average.desc',
+          'vote_count.gte': 100, // Minimum votes for quality
+          page: page,
+          language: 'en-US'
+        },
+        timeout: 10000
+      });
+
+      const results = response.data.results
+        .map(item => ({
+          id: `tmdb_movie_${item.id}`,
+          title: item.title,
+          originalTitle: item.original_title,
+          overview: item.overview,
+          releaseDate: item.release_date,
+          year: item.release_date ? item.release_date.split('-')[0] : null,
+          posterUrl: item.poster_path ? `${this.tmdbImageUrl}${item.poster_path}` : null,
+          backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : null,
+          rating: item.vote_average,
+          popularity: item.popularity,
+          type: 'movie',
+          source: 'tmdb',
+          tmdbId: item.id,
+          genres: this.mapGenres(item.genre_ids || [], 'movie'),
+          genreIds: item.genre_ids || [],
+          hasThumbnail: !!item.poster_path,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'movie') : null,
+          hasStreaming: this.useCinetaro,
+          subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
+        }))
+        .filter(item => item.title && item.posterUrl && item.tmdbId);
+
+      await this.setCache(cacheKey, results);
+      return results;
+    } catch (error) {
+      console.error('Error getting top rated animation movies:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get top rated animation TV shows from TMDB
+   */
+  async getTopRatedAnimationTV(page = 1) {
+    if (!this.tmdbApiKey) return [];
+
+    const cacheKey = `tmdb_top_rated_animation_tv_${page}`;
+    const cached = await this.getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await axios.get(`${this.tmdbBaseUrl}/discover/tv`, {
+        params: {
+          api_key: this.tmdbApiKey,
+          with_genres: 16, // Animation genre
+          sort_by: 'vote_average.desc',
+          'vote_count.gte': 50, // Minimum votes for quality
+          page: page,
+          language: 'en-US'
+        },
+        timeout: 10000
+      });
+
+      const results = response.data.results
+        .map(item => ({
+          id: `tmdb_tv_${item.id}`,
+          title: item.name,
+          originalTitle: item.original_name,
+          overview: item.overview,
+          releaseDate: item.first_air_date,
+          year: item.first_air_date ? item.first_air_date.split('-')[0] : null,
+          posterUrl: item.poster_path ? `${this.tmdbImageUrl}${item.poster_path}` : null,
+          backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : null,
+          rating: item.vote_average,
+          popularity: item.popularity,
+          type: 'tv',
+          source: 'tmdb',
+          tmdbId: item.id,
+          genres: this.mapGenres(item.genre_ids || [], 'tv'),
+          genreIds: item.genre_ids || [],
+          hasThumbnail: !!item.poster_path,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'tv', { season: 1, episode: 1 }) : null,
+          hasStreaming: this.useCinetaro,
+          subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
+        }))
+        .filter(item => item.title && item.posterUrl && item.tmdbId);
+
+      await this.setCache(cacheKey, results);
+      return results;
+    } catch (error) {
+      console.error('Error getting top rated animation TV:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get TV shows by genre (TMDB)
+   */
+  async getTVShowsByGenre(genreId, page = 1) {
+    if (!this.tmdbApiKey) return [];
+
+    const cacheKey = `tmdb_tv_genre_${genreId}_${page}`;
+    const cached = await this.getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const response = await axios.get(`${this.tmdbBaseUrl}/discover/tv`, {
+        params: {
+          api_key: this.tmdbApiKey,
+          with_genres: genreId,
+          page: page,
+          language: 'en-US',
+          sort_by: 'popularity.desc'
+        },
+        timeout: 10000
+      });
+
+      const results = response.data.results
+        .map(item => ({
+          id: `tmdb_tv_${item.id}`,
+          title: item.name,
+          originalTitle: item.original_name,
+          overview: item.overview,
+          releaseDate: item.first_air_date,
+          year: item.first_air_date ? item.first_air_date.split('-')[0] : null,
+          posterUrl: item.poster_path ? `${this.tmdbImageUrl}${item.poster_path}` : null,
+          backdropUrl: item.backdrop_path ? `https://image.tmdb.org/t/p/w1280${item.backdrop_path}` : null,
+          rating: item.vote_average,
+          popularity: item.popularity,
+          type: 'tv',
+          source: 'tmdb',
+          tmdbId: item.id,
+          genres: this.mapGenres(item.genre_ids || [], 'tv'),
+          genreIds: item.genre_ids || [],
+          hasThumbnail: !!item.poster_path,
+          streamingUrl: this.useCinetaro ? this.getStreamingUrlSync(item.id, 'tv', { season: 1, episode: 1 }) : null,
+          hasStreaming: this.useCinetaro,
+          subtitles: this.useCinetaro ? ['english', 'spanish', 'french', 'german'] : []
+        }))
+        .filter(item => item.title && item.posterUrl && item.tmdbId);
+
+      await this.setCache(cacheKey, results);
+      return results;
+    } catch (error) {
+      console.error('Error getting TV shows by genre:', error.message);
+      return [];
+    }
   }
 
   /**
@@ -1215,15 +1569,15 @@ class MovieAPI {
   }
 
   /**
-   * Get movies from OMDb API (requires free API key - 1,000 requests/day)
-   * Note: OMDb is better for metadata, not for listing. We'll use it as a supplement.
+   * Get movie/TV show from OMDb API by IMDb ID (requires free API key - 1,000 requests/day)
+   * Returns enriched metadata including ratings, awards, box office, etc.
    */
   async getMovieFromOMDb(imdbId) {
     if (!this.omdbApiKey) {
       return null; // OMDb requires API key
     }
 
-    const cacheKey = `omdb_movie_${imdbId}`;
+    const cacheKey = `omdb_${imdbId}`;
     const cached = await this.getCached(cacheKey);
     if (cached) return cached;
 
@@ -1242,22 +1596,147 @@ class MovieAPI {
       }
 
       const data = response.data;
+      
+      // Parse ratings array
+      const ratings = {};
+      if (data.Ratings && Array.isArray(data.Ratings)) {
+        data.Ratings.forEach(rating => {
+          if (rating.Source && rating.Value) {
+            const source = rating.Source.toLowerCase().replace(/\s+/g, '_');
+            ratings[source] = rating.Value;
+          }
+        });
+      }
+
       return {
-        id: `omdb_movie_${imdbId}`,
+        id: `omdb_${imdbId}`,
         title: data.Title,
         year: data.Year,
-        overview: data.Plot,
+        rated: data.Rated !== 'N/A' ? data.Rated : null,
+        released: data.Released !== 'N/A' ? data.Released : null,
+        runtime: data.Runtime !== 'N/A' ? data.Runtime : null,
+        overview: data.Plot !== 'N/A' ? data.Plot : null,
+        genres: data.Genre !== 'N/A' ? data.Genre.split(', ').map(g => g.trim()) : [],
+        director: data.Director !== 'N/A' ? data.Director : null,
+        writer: data.Writer !== 'N/A' ? data.Writer : null,
+        actors: data.Actors !== 'N/A' ? data.Actors : null,
+        language: data.Language !== 'N/A' ? data.Language : null,
+        country: data.Country !== 'N/A' ? data.Country : null,
+        awards: data.Awards !== 'N/A' ? data.Awards : null,
         posterUrl: data.Poster !== 'N/A' ? data.Poster : null,
-        rating: data.imdbRating !== 'N/A' ? parseFloat(data.imdbRating) : null,
-        genres: data.Genre ? data.Genre.split(', ').map(g => g.trim()) : [],
-        director: data.Director,
-        actors: data.Actors,
-        runtime: data.Runtime,
-        imdbId: data.imdbID
+        ratings: ratings,
+        metascore: data.Metascore !== 'N/A' ? parseFloat(data.Metascore) : null,
+        imdbRating: data.imdbRating !== 'N/A' ? parseFloat(data.imdbRating) : null,
+        imdbVotes: data.imdbVotes !== 'N/A' ? data.imdbVotes.replace(/,/g, '') : null,
+        imdbID: data.imdbID,
+        type: data.Type, // 'movie' or 'series'
+        dvd: data.DVD !== 'N/A' ? data.DVD : null,
+        boxOffice: data.BoxOffice !== 'N/A' ? data.BoxOffice : null,
+        production: data.Production !== 'N/A' ? data.Production : null,
+        website: data.Website !== 'N/A' ? data.Website : null,
+        // Use IMDb rating as primary rating if available
+        rating: data.imdbRating !== 'N/A' ? parseFloat(data.imdbRating) : null
       };
     } catch (error) {
       console.error('Error getting movie from OMDb:', error.message);
       return null;
+    }
+  }
+
+  /**
+   * Search OMDb by title (requires free API key)
+   * Returns first match with full metadata
+   */
+  async searchOMDbByTitle(title, year = null) {
+    if (!this.omdbApiKey) {
+      return null;
+    }
+
+    const cacheKey = `omdb_search_${title}_${year || 'any'}`;
+    const cached = await this.getCached(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const params = {
+        apikey: this.omdbApiKey,
+        t: title,
+        plot: 'full'
+      };
+      
+      if (year) {
+        params.y = year;
+      }
+
+      const response = await axios.get(this.omdbBaseUrl, {
+        params: params,
+        timeout: 10000
+      });
+
+      if (response.data.Response === 'False') {
+        return null;
+      }
+
+      // Get full details using the IMDb ID
+      if (response.data.imdbID) {
+        return await this.getMovieFromOMDb(response.data.imdbID);
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error searching OMDb:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Enrich TMDB movie/TV data with OMDb metadata
+   * Tries to match by title and year, then enriches with OMDb data
+   */
+  async enrichWithOMDb(tmdbItem) {
+    if (!this.omdbApiKey || !tmdbItem) {
+      return tmdbItem; // Return as-is if no OMDb key or no item
+    }
+
+    try {
+      // Try to get IMDb ID from TMDB details if available
+      // For now, search OMDb by title and year
+      const omdbData = await this.searchOMDbByTitle(tmdbItem.title, tmdbItem.year);
+      
+      if (!omdbData) {
+        return tmdbItem; // No OMDb match, return original
+      }
+
+      // Merge OMDb data into TMDB item (don't overwrite existing good data)
+      return {
+        ...tmdbItem,
+        // Enhance with OMDb metadata
+        imdbId: omdbData.imdbID || tmdbItem.imdbId,
+        imdbRating: omdbData.imdbRating || tmdbItem.rating,
+        metascore: omdbData.metascore || tmdbItem.metascore,
+        omdbRatings: omdbData.ratings || {},
+        director: omdbData.director || tmdbItem.director,
+        writer: omdbData.writer || tmdbItem.writer,
+        actors: omdbData.actors || tmdbItem.actors,
+        awards: omdbData.awards || tmdbItem.awards,
+        boxOffice: omdbData.boxOffice || tmdbItem.boxOffice,
+        rated: omdbData.rated || tmdbItem.rated,
+        runtime: omdbData.runtime || tmdbItem.runtime,
+        country: omdbData.country || tmdbItem.country,
+        language: omdbData.language || tmdbItem.language,
+        // Use better poster if OMDb has one and TMDB doesn't
+        posterUrl: tmdbItem.posterUrl || omdbData.posterUrl,
+        // Enhance plot/overview if OMDb has more detailed one
+        overview: (omdbData.overview && omdbData.overview.length > (tmdbItem.overview?.length || 0)) 
+          ? omdbData.overview 
+          : (tmdbItem.overview || omdbData.overview),
+        // Merge genres
+        genres: [...new Set([...(tmdbItem.genres || []), ...(omdbData.genres || [])])],
+        // Flag that this was enriched with OMDb
+        enrichedWithOMDb: true
+      };
+    } catch (error) {
+      console.warn('Error enriching with OMDb:', error.message);
+      return tmdbItem; // Return original on error
     }
   }
 

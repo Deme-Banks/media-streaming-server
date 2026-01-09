@@ -376,6 +376,7 @@ body {
     font-weight: bold;
     z-index: 10;
     text-transform: uppercase;
+    pointer-events: none; /* Don't block clicks - badges are visual only */
 }
 
 .watch-badge {
@@ -390,6 +391,7 @@ body {
     font-weight: bold;
     z-index: 10;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    pointer-events: none; /* Don't block clicks - badges are visual only */
 }
 
 .movie-card {

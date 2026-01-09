@@ -15,7 +15,7 @@ const os = require('os');
 const config = require('./src/config');
 
 // Import middleware
-const { errorHandler, asyncHandler } = require('./src/middleware/errorHandler');
+const { errorHandler } = require('./src/middleware/errorHandler');
 
 // Import routes
 const authRoutes = require('./src/routes/auth.routes');
@@ -56,37 +56,6 @@ app.use('/api/tv', tvRoutes);
 // Media routes - more specific first
 app.use('/api/media', combinedMediaRoutes); // /api/media/all, /api/media/genres (more specific)
 app.use('/api/media', mediaDetailsRoutes); // /api/media/:mediaId/details (more specific)
-
-// Local media streaming endpoints (must be before /api/media/:id to avoid conflicts)
-app.get('/api/stream/:id', asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const range = req.headers.range;
-  const MediaScanner = require('./src/services/mediaScanner');
-  const MediaStreamer = require('./src/services/mediaStreamer');
-  const mediaScanner = new MediaScanner(config.mediaPath);
-  const mediaStreamer = new MediaStreamer(config.mediaPath);
-  
-  const mediaPath = await mediaScanner.getMediaPath(id);
-  if (!mediaPath) {
-    return res.status(404).json({ error: 'Media not found' });
-  }
-  await mediaStreamer.stream(req, res, mediaPath, range);
-}));
-
-app.get('/api/thumbnail/:id', asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const fs = require('fs-extra');
-  const path = require('path');
-  const MediaScanner = require('./src/services/mediaScanner');
-  const mediaScanner = new MediaScanner(config.mediaPath);
-  
-  const thumbnailPath = await mediaScanner.getThumbnail(id);
-  if (thumbnailPath && await fs.pathExists(thumbnailPath)) {
-    return res.sendFile(path.resolve(thumbnailPath));
-  }
-  res.status(404).json({ error: 'Thumbnail not found' });
-}));
-
 app.use('/api/media', mediaRoutes); // /api/media/:id (catch-all for local media)
 
 // General API routes (featured, popular, bulk, etc.)

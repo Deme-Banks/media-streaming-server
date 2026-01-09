@@ -1,5 +1,4 @@
-// Global state - keeping for backward compatibility with existing code
-// Modules are created but not yet fully integrated to maintain stability
+// Global state
 let allMedia = [];
 let filteredMedia = [];
 let allAPIContent = [];
@@ -770,9 +769,9 @@ async function displayFeatured() {
         // If we don't have enough from loaded content, try to get featured from API
         if (streamableContent.length < 8) {
             try {
-        const response = await fetch('/api/featured');
-        if (response.ok) {
-            const featured = await response.json();
+                const response = await fetch('/api/featured');
+                if (response.ok) {
+                    const featured = await response.json();
                     if (Array.isArray(featured) && featured.length > 0) {
                         // Filter for streamable items only
                         const streamableFeatured = featured.filter(item => 
@@ -816,10 +815,7 @@ async function displayFeatured() {
         const featuredItems = streamableContent.slice(0, 8);
         
         if (featuredItems.length > 0) {
-            // Filter out invalid items before creating cards
-            const validFeatured = featuredItems.filter(media => media && media.id);
-            const featuredCards = validFeatured.map(media => createMovieCard(media, true)).filter(card => card && card.trim()).join('');
-            featuredGrid.innerHTML = featuredCards;
+            featuredGrid.innerHTML = featuredItems.map(media => createMovieCard(media, true)).join('');
         } else {
             // No streamable content available
             const featuredSection = document.getElementById('featuredSection');
@@ -848,21 +844,11 @@ async function displayFeatured() {
     
     // Attach click listeners to featured cards
     featuredGrid.querySelectorAll('.movie-card').forEach(card => {
-        card.addEventListener('click', (event) => {
-            // Don't trigger if clicking on buttons
-            if (event.target.closest('.favorite-btn') || 
-                event.target.closest('.collection-btn') || 
-                event.target.closest('button')) {
-                return;
-            }
-            
+        card.addEventListener('click', () => {
             const mediaId = card.dataset.id;
             const mediaType = card.dataset.type || 'video';
             const mediaSource = card.dataset.source || 'local';
-            
-            if (mediaId && mediaType) {
             openMediaPlayer(mediaId, mediaType, mediaSource);
-            }
         });
     });
 }
@@ -883,10 +869,7 @@ function displayMedia() {
     const end = start + itemsPerPage;
     const pageMedia = filteredMedia.slice(start, end);
     
-    // Filter out invalid items and generate cards
-    const validMedia = pageMedia.filter(media => media && media.id);
-    const cardsHTML = validMedia.map(media => createMovieCard(media, false)).filter(card => card && card.trim()).join('');
-    moviesGrid.innerHTML = cardsHTML;
+    moviesGrid.innerHTML = pageMedia.map(media => createMovieCard(media, false)).join('');
     
     setupPagination();
     attachCardClickListeners();
@@ -894,12 +877,6 @@ function displayMedia() {
 
 // Create movie card HTML
 function createMovieCard(media, isFeatured = false, progress = null) {
-    // Validate media has required fields
-    if (!media || !media.id) {
-        console.warn('Invalid media item, skipping card:', media);
-        return '';
-    }
-    
     // Determine thumbnail URL based on source
     let thumbnailUrl;
     if (media.source === 'tmdb' || media.source === 'jikan') {
@@ -975,11 +952,10 @@ function createMovieCard(media, isFeatured = false, progress = null) {
     }
     
     return `
-        <div class="movie-card" data-id="${media.id}" data-type="${mediaType || 'video'}" data-source="${source || 'local'}" style="cursor: pointer;">
+        <div class="movie-card" data-id="${media.id}" data-type="${mediaType}" data-source="${source}">
             ${badge}
             ${watchBadge}
             ${favoriteBtn}
-            ${collectionBtn}
             <img src="${thumbnailUrl}" alt="${title}" class="movie-thumbnail" 
                  onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iIzJhMmEyYSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5WaWRlbyBJY29uPC90ZXh0Pjwvc3ZnPg=='">
             ${progressBar}
@@ -994,45 +970,21 @@ function createMovieCard(media, isFeatured = false, progress = null) {
 // Attach click listeners to movie cards
 function attachCardClickListeners() {
     document.querySelectorAll('.movie-card').forEach(card => {
-        // Remove any existing listeners to prevent duplicates
-        const newCard = card.cloneNode(true);
-        card.parentNode.replaceChild(newCard, card);
-        
-        // Attach click listener to the card itself
-        newCard.addEventListener('click', (event) => {
-            // Don't trigger if clicking on buttons or badges (let them handle their own clicks)
-            if (event.target.closest('.favorite-btn') || 
-                event.target.closest('.collection-btn') || 
-                event.target.closest('button')) {
-                return; // Let button handle the click
-            }
-            
-            const mediaId = newCard.dataset.id;
-            const mediaType = newCard.dataset.type;
-            const source = newCard.dataset.source || 'local';
-            
-            // Validate we have required data before opening player
-            if (!mediaId) {
-                console.warn('Card missing mediaId:', newCard);
-                return;
-            }
-            
-            // Open the media player
-            if (typeof openMediaPlayer === 'function') {
-                openMediaPlayer(mediaId, mediaType, source);
-            } else {
-                console.error('openMediaPlayer function not found');
-            }
+        card.addEventListener('click', () => {
+            const mediaId = card.dataset.id;
+            const mediaType = card.dataset.type;
+            const source = card.dataset.source || 'local';
+            openMediaPlayer(mediaId, mediaType, source);
         });
     });
 }
 
 // Open media player
 async function openMediaPlayer(mediaId, mediaType, source = 'local') {
-            const videoPlayer = document.getElementById('videoPlayer');
+    const videoPlayer = document.getElementById('videoPlayer');
     const cinetaroPlayer = document.getElementById('cinetaroPlayer');
-            const videoModal = document.getElementById('videoModal');
-            const videoInfo = document.getElementById('videoInfo');
+    const videoModal = document.getElementById('videoModal');
+    const videoInfo = document.getElementById('videoInfo');
     const subtitleSelector = document.getElementById('subtitleSelector');
     const subtitleSelect = document.getElementById('subtitleLang');
     
@@ -1475,7 +1427,7 @@ async function loadEpisodeStream() {
     if (!currentMediaId || currentMediaType !== 'tv') return;
     
     const cinetaroPlayer = document.getElementById('cinetaroPlayer');
-        const videoInfo = document.getElementById('videoInfo');
+    const videoInfo = document.getElementById('videoInfo');
     const allContent = [...allMedia, ...allAPIContent];
     const media = allContent.find(m => m.id === currentMediaId);
     
@@ -1503,11 +1455,11 @@ async function loadEpisodeStream() {
                 // Update episode info
                 const currentEpInfo = tvShowEpisodes.find(ep => ep.episodeNumber === currentEpisode);
                 if (videoInfo) {
-        videoInfo.innerHTML = `
+                    videoInfo.innerHTML = `
                         <h3>${media.title} - S${currentSeason}E${currentEpisode}</h3>
                         ${currentEpInfo && currentEpInfo.name ? `<p><strong>Episode:</strong> ${currentEpInfo.name}</p>` : ''}
-            ${media.year ? `<p><strong>Year:</strong> ${media.year}</p>` : ''}
-            ${media.rating ? `<p><strong>Rating:</strong> ⭐ ${media.rating.toFixed(1)}</p>` : ''}
+                        ${media.year ? `<p><strong>Year:</strong> ${media.year}</p>` : ''}
+                        ${media.rating ? `<p><strong>Rating:</strong> ⭐ ${media.rating.toFixed(1)}</p>` : ''}
                         ${currentEpInfo && currentEpInfo.overview ? `<p class="overview"><strong>Episode Overview:</strong><br>${currentEpInfo.overview}</p>` : ''}
                     `;
                 }
@@ -1626,13 +1578,10 @@ async function loadSimilarContent(mediaId) {
             const similar = await response.json();
             const similarDiv = document.getElementById('similarContent');
             if (similarDiv && similar.length > 0) {
-                // Filter valid similar items
-                const validSimilar = similar.filter(media => media && media.id).slice(0, 6);
-                const similarCards = validSimilar.map(media => createMovieCard(media, true)).filter(card => card && card.trim()).join('');
                 similarDiv.innerHTML = `
                     <h4 style="margin-bottom: 10px; color: #ff6600;">Similar Content</h4>
                     <div class="featured-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px;">
-                        ${similarCards}
+                        ${similar.slice(0, 6).map(media => createMovieCard(media, true)).join('')}
                     </div>
                 `;
                 
@@ -1655,9 +1604,9 @@ async function loadSimilarContent(mediaId) {
 // Setup keyboard shortcuts
 function setupKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
-    const videoModal = document.getElementById('videoModal');
+        const videoModal = document.getElementById('videoModal');
         if (videoModal && videoModal.style.display !== 'none') {
-    const videoPlayer = document.getElementById('videoPlayer');
+            const videoPlayer = document.getElementById('videoPlayer');
             
             // Space bar - play/pause
             if (e.code === 'Space' && videoPlayer && videoPlayer.src) {
@@ -1665,7 +1614,7 @@ function setupKeyboardShortcuts() {
                 if (videoPlayer.paused) {
                     videoPlayer.play();
                 } else {
-    videoPlayer.pause();
+                    videoPlayer.pause();
                 }
             }
             
@@ -1805,11 +1754,11 @@ async function filterByGenre(genre) {
             // Keep local media separate for streaming
             // Now apply current filter type to the filtered results
             await filterMedia(currentFilter);
-                    } else {
+        } else {
             // Fallback to client-side filtering
             await filterMedia(currentFilter);
-                    }
-                } catch (error) {
+        }
+    } catch (error) {
         console.error('Error filtering by genre:', error);
         // Fallback to client-side filtering
         await filterMedia(currentFilter);
@@ -1835,7 +1784,7 @@ function filterByType(type) {
         filteredMedia = baseMedia.filter(m => m.type === 'movie' || (m.source && !m.type) || (!m.source && !m.type));
     } else if (type === 'tv') {
         filteredMedia = baseMedia.filter(m => m.type === 'tv' || m.type === 'anime');
-            } else {
+    } else {
         filteredMedia = baseMedia;
     }
     
